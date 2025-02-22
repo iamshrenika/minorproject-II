@@ -3,7 +3,22 @@ import { Link } from 'react-router-dom';
 import logo from '../logo.svg';
 
 import SingleProduct from './SingleProduct';
+import { useState, useEffect } from 'react';
 function Home(){
+    const baseUrl='http://127.0.0.1:8000/api';
+    const [Products,setProducts]=useState([])
+    useEffect(() => {
+        fetchData(baseUrl+'/products/?fetch_limit=4');
+        },[]);
+    
+        function fetchData(baseurl){
+            fetch(baseurl)
+            .then((response) => response.json())
+            .then((data) => {
+                setProducts(data.results);
+            });
+        }
+    
     return(
     // Main Content
     <main className="container">
@@ -16,14 +31,9 @@ function Home(){
         <div className="container mt-5">
             <h3 className="text-center mb-4">Latest Products <Link to="/products" className='float-end btn btn-light m-2'>View All Products <i className="fa-solid fa-arrow-right-long"></i></Link></h3>
             <div className="row mt-4">
-            <SingleProduct title="Beaded Necklace"/>
-            <SingleProduct title="Beaded Necklace"/>
-            <SingleProduct title="Beaded Necklace"/>
-            <SingleProduct title="Beaded Necklace"/>
-            <SingleProduct title="Beaded Necklace"/>
-            <SingleProduct title="Beaded Necklace"/>
-            <SingleProduct title="Beaded Necklace"/>
-            <SingleProduct title="Beaded Necklace"/>
+                    {
+                        Products.map((product)=><SingleProduct product={product}/>)
+                    }
             </div>
         </div>
         {/* End Latest Products */}

@@ -4,6 +4,9 @@ from . import models
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate
+import json
+from django.contrib.auth.models import User
 
 # responsible for listing and adding the data
 class VendorList(generics.ListCreateAPIView):
@@ -16,12 +19,50 @@ class VendorDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = models.Vendor.objects.all()
     serializer_class=serializers.VendorDetailSerializer
     # permission_classes=[permissions.IsAuthenticated]
-
+# Product
 class ProductList(generics.ListCreateAPIView):
+    queryset = models.Product.objects.all().order_by('-created_at')
+    serializer_class=serializers.ProductListSerializer
+    pagination_class=pagination.PageNumberPagination
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if 'category' in self.request.GET:
+            category=self.request.GET['category']
+            category=models.ProductCategory.objects.get(id=category)
+            qs=qs.filter(category=category)
+        if 'fetch_limit' in self.request.GET:
+            limit=int(self.request.GET['fetch_limit'])
+            qs=qs[:limit]
+        if 'latest' in self.request.GET:
+            qs = qs.order_by('-created_at')
+        return qs
+#image
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = models.Product.objects.all()
+    serializer_class = serializers.ProductListSerializer
+# Tag Product
+class TagProductList(generics.ListCreateAPIView):
     queryset = models.Product.objects.all()
     serializer_class=serializers.ProductListSerializer
-    # pagination_class=pagination.PageNumberPagination
+    pagination_class=pagination.PageNumberPagination
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        tag=self.kwargs['tag']
+        qs=qs.filter(tags__icontains=tag)
+        return qs
+# Related Product
+class RelatedProductList(generics.ListCreateAPIView):
+    queryset = models.Product.objects.all()
+    serializer_class=serializers.ProductListSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        product_id=self.kwargs['pk']
+        product=models.Product.objects.get(id=product_id)
+        qs=qs.filter(category=product.category).exclude(id=product_id)
+        return qs
 class ProductDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = models.Product.objects.all()
     serializer_class=serializers.ProductDetailSerializer
@@ -39,8 +80,85 @@ class CustomerDetail(generics.RetrieveUpdateDestroyAPIView):
 
 @csrf_exempt
 def customer_login(request):
-    username=request.POST.get('username')
-    password=request.POST.get('password')
+    if request.method == 'POST':  
+        try:
+            if request.content_type == "application/json":
+                data = json.loads(request.body)  # JSON data from React
+            else:
+                data = request.POST  # Form data (if sent from a form)
+
+            username = data.get('username')
+            password = data.get('password')
+
+            # Authenticate user
+            user = authenticate(username=username, password=password)
+
+            if user is not None:
+                return JsonResponse({
+                    'bool':True,
+                    "user": user.username
+                })
+            else:
+                return JsonResponse({
+                    'bool':False,
+                    "msg": "Invalid username or password"
+                })
+        except json.JSONDecodeError:
+            return JsonResponse({
+                "bool": "error",
+                "msg": "Invalid JSON format"
+            }, status=400)
+
+    return JsonResponse({"bool": False, "message": "Invalid request method"}, status=400)
+
+@csrf_exempt
+def customer_register(request):
+    if request.method == 'POST':  
+        try:
+            if request.content_type == "application/json":
+                data = json.loads(request.body)  # JSON data from React
+            else:
+                data = request.POST  # Form data (if sent from a form)
+
+            first_name = data.get('first_name')
+            last_name = data.get('last_name')
+            email = data.get('email')
+            mobile = data.get('mobile')
+            username = data.get('username')
+            password = data.get('password')
+            user=User.objects.create(
+                first_name = first_name,
+                last_name = last_name,
+                email = email,
+                username = username,
+                password = password,
+            )
+
+            if user is not None:
+                # create customer
+                customer=models.Customer.objects.create(
+                    user=user,
+                    mobile=mobile
+                )
+                return JsonResponse({
+                    'bool':True,
+                    "user": user.id,
+                    'customer':customer.id,
+                    'msg':'Thank you for your registration. You can login now.'
+                })
+            else:
+                return JsonResponse({
+                    'bool':False,
+                    "msg": "Oops... Something went wrong!!"
+                })
+        except json.JSONDecodeError:
+            return JsonResponse({
+                "bool": "error",
+                "msg": "Invalid JSON format"
+            }, status=400)
+
+    return JsonResponse({"bool": False, "message": "Invalid request method"}, status=400)
+
 
 # Order
 class OrderList(generics.ListCreateAPIView):
@@ -82,3 +200,8 @@ class CategoryDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = models.ProductCategory.objects.all()
     serializer_class=serializers.CategoryDetailSerializer
     # permission_classes=[permissions.IsAuthenticated]
+
+# Product Image
+# class ProductImageViewSet(viewsets.ModelViewSet):
+# queryset = models.ProductImage.objects.all()
+# serializer_class=serializers.ProductImageSerializer

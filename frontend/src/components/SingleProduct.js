@@ -3,20 +3,21 @@ import { Link } from 'react-router-dom';
 //Assets
 import logo from '../logo.svg';
 function SingleProduct(props){
-        // Check if props.product exists
-        if (!props.product) {
-           return <div>Loading...</div>; // Show loading message if product data is not available
-        }
+     // Check if props.product exists
+     if (!props.product) {
+        return <div>Loading...</div>; // Show loading message if product data is not available
+    }
+    const productUrl = `/product/${props.product.slug}/${props.product.id}`;
     return(
         // Product Box
         <div className="col-12 col-md-3 mb-4">
             <div className="card shadow">
-            <Link to="/product/necklace-timer/123">
-                <img src={logo} className="card-img-top" alt="Product" />
+            <Link to={productUrl}>
+                <img src={props.product.image} className="card-img-top" alt="Product" style={{ width: "100%", height: "220px", objectFit: "cover" }} />
             </Link>
             <div className="card-body">
                 <h5 className="card-title">
-                <Link to="/product/necklace-timer/123">
+                <Link to={productUrl}>
                    {props.product.title}
                 </Link>
                 </h5>
@@ -28,7 +29,7 @@ function SingleProduct(props){
             </div>
             </div>
         </div>
-        // Product Box End
+        // Product Box End 
     );
 }
 

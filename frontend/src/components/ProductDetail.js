@@ -1,28 +1,89 @@
 import logo from '../logo.svg';
 import {Link} from 'react-router-dom'
-import SingleProduct from './SingleProduct';
+import SingleRelatedProduct from './SingleRelatedProduct';
+import { useState, useEffect } from 'react';
+import { useParams } from "react-router-dom";
 function ProductDetail(){
+    const baseUrl='http://127.0.0.1:8000/api';
+    const [productData, setproductData] = useState({}); 
+    const [productImgs,setproductImgs]=useState([]);
+    const [productTags,setproductTags]=useState([]);
+    const [relatedProducts,setRelatedProducts]=useState([]);
+    const {product_slug,product_id} = useParams();
+
+    useEffect(() => {
+        fetchData(`${baseUrl}/product/${product_id}`);
+        fetchRelatedData(baseUrl+'/related-products/'+product_id);
+    }, [product_id]);
+
+    function fetchData(baseurl) {
+        fetch(baseurl)
+            .then((response) => response.json())
+            .then((data) => {
+                console.log("API Response:", data);
+                console.log("Product Images:", data.product_imgs);
+                setproductData(data);
+                setproductImgs(data.product_imgs || []);
+                setproductTags(data.tag_list);
+            })
+            .catch((error) => {
+                console.error("Error fetching product data:", error);
+            });
+    }
+    function fetchRelatedData(baseurl) {
+        fetch(baseurl)
+            .then((response) => response.json())
+            .then((data) => {
+                console.log("Related Products API Response:", data);
+                setRelatedProducts(data.results);
+            })
+            .catch((error) => {
+                console.error("Error fetching related products:", error);
+            });
+    }
+    function chunkArray(array, chunkSize) {
+        const result = [];
+        for (let i = 0; i < array.length; i += chunkSize) {
+            result.push(array.slice(i, i + chunkSize));
+        }
+        return result;
+    }
+    //chunks of 4
+    const groupedRelatedProducts = chunkArray(relatedProducts, 4);
+    const tagsLinks=[]
+    for(let i=0; i<productTags.length; i++){
+        let tag=productTags[i].trim();
+        tagsLinks.push(<Link className='badge bg-secondary text-white me-1' to={`/products/${tag}`}>{tag}</Link>)
+    }
     return(
         <section className="container mt-4">
             <div className="row">
                 <div className="col-4">
                     <div id="productThumbnailSlider" className="carousel carousel-dark slide carousel-fade" data-bs-ride="true">
                         <div className="carousel-indicators">
-                            <button type="button" data-bs-target="#productThumbnailSlider" data-bs-slide-to="0" className="active" aria-current="true" aria-label="Slide 1"></button>
-                            <button type="button" data-bs-target="#productThumbnailSlider" data-bs-slide-to="1" aria-label="Slide 2"></button>
-                            <button type="button" data-bs-target="#productThumbnailSlider" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                            {productImgs.map((img,index)=>{
+                                if(index === 0){
+                                    return <button type="button" data-bs-target="#productThumbnailSlider" data-bs-slide-to={index} className="active" aria-current="true" aria-label="Slide 1"></button>
+                                }
+                                else{
+                                    return <button type="button" data-bs-target="#productThumbnailSlider" data-bs-slide-to={index} aria-current="true" aria-label="Slide 1"></button>
+                                }
+                            })}
                         </div>
                         <div className="carousel-inner">
-                            <div className="carousel-item active">
-                                <img src={logo} className="img-thumbnail mb-5" alt="..." />
-                            </div>
-                            <div className="carousel-item">
-                                <img src={logo} className="img-thumbnail mb-5" alt="..." />
-                            </div>
-                            <div className="carousel-item">
-                                <img src={logo} className="img-thumbnail mb-5" alt="..." />
+                            {productImgs.map((img,index)=>
+                                {
+                                    if(index===0){
+                                        return <div className="carousel-item active">
+                                        <img src={img.image} className="img-thumbnail mb-5" alt={index} />
+                                        </div> 
+                                    }else{
+                                        return <div className="carousel-item">
+                                        <img src={img.image} className="img-thumbnail mb-5" alt={index} />
+                                        </div> 
+                                }
+                                })}
                         </div>
-                    </div>
                     <button className="carousel-control-prev" type="button" data-bs-target="#productThumbnailSlider" data-bs-slide="prev">
                         <span className="carousel-control-prev-icon" aria-hidden="true"></span>
                         <span className="visually-hidden">Previous</span>
@@ -34,9 +95,9 @@ function ProductDetail(){
                     </div>
                 </div>
                 <div className="col-8">
-                    <h1>Product Title</h1>
-                    <p>Ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
-                    <h5 className='card-title'>Price: Rs. 500</h5>
+                    <h1>{productData.title}</h1>
+                    <p>{productData.detail}</p>
+                    <h5 className='card-title'>Price: Rs. {productData.price}</h5>
                     <p className='mt-3'>
                         <button title='Add to Cart' className='btn btn-success'>
                             <i className="fa-solid fa-cart-shopping"></i> Add to Cart
@@ -52,50 +113,40 @@ function ProductDetail(){
                     <div className='producttags mt-4'>
                         <h5>Tags</h5>
                         <p>
-                            <Link to="#" className='badge bg-secondary text-white me-1'>necklace</Link>
-                            <Link to="#" className='badge bg-secondary text-white me-1'>bracelet</Link>
-                            <Link to="#" className='badge bg-secondary text-white me-1'>ring</Link>
-                            <Link to="#" className='badge bg-secondary text-white me-1'>necklace</Link>
-                            <Link to="#" className='badge bg-secondary text-white me-1'>bracelet</Link>
-                            <Link to="#" className='badge bg-secondary text-white me-1'>ring</Link>
+                            {tagsLinks}
                         </p>
                     </div>
                 </div>
 
             </div>
             {/* Related Products */}
-            <h3 className="mt-5 mb-3">Related Products</h3>
+            <h3 className="mt-5 mb-3 text-center">Related Products</h3>
             <div id="relatedProductsSlider" className="carousel carousel-dark slide bg-light" data-bs-ride="true">
                 <div className="carousel-indicators">
-                    <button type="button" data-bs-target="#relatedProductsSlider" data-bs-slide-to="0" className="active" aria-current="true" aria-label="Slide 1"></button>
-                    <button type="button" data-bs-target="#relatedProductsSlider" data-bs-slide-to="1" aria-label="Slide 2"></button>
-                    <button type="button" data-bs-target="#relatedProductsSlider" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                    {groupedRelatedProducts.map((group, index) => (
+                        <button
+                            type="button"
+                            data-bs-target="#relatedProductsSlider"
+                            data-bs-slide-to={index}
+                            className={index === 0 ? 'active' : ''}
+                            aria-current={index === 0}
+                            aria-label={`Slide ${index + 1}`}
+                            key={index}
+                        ></button>
+                    ))}
                 </div>
-                <div className="carousel-inner">
-                    <div className="carousel-item active">
-                        <div className="row mb-5">
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
+                <div className="carousel-inner ms-3">
+                    {groupedRelatedProducts.map((group, index) => (
+                        <div className={`carousel-item ${index === 0 ? 'active' : ''}`} key={index}>
+                            <div className="row row-cols-1 row-cols-md-4 g-3">
+                                {group.map((product) => (
+                                    <div className="col" key={product.id}>
+                                        <SingleRelatedProduct product={product} />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                    <div className="carousel-item">
-                        <div className="row mb-5">
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        </div>
-                    </div>
-                    <div className="carousel-item">
-                        <div className="row mb-5">
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        <SingleProduct title="Clay Ring"/>
-                        </div>
-                    </div>
+                    ))}
                 </div>
                 {/* <button className="carousel-control-prev" type="button" data-bs-target="#relatedProductsSlider" data-bs-slide="prev">
                     <span className="carousel-control-prev-icon" aria-hidden="true"></span>
